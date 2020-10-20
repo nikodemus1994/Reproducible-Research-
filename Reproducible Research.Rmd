@@ -1,0 +1,97 @@
+---
+title: "Reproducible Research Project 1"
+author: "Nicolás González Rojas"
+date: "19/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the “quantified self” movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But this data remains under-utilized because the raw data is hard to obtain and there are limited tools and statistical methods available for interpreting the data. This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+## Data
+The data for this assignment can be downloaded from the course web site: Dataset: Activity monitoring data [52K] The variables included in this dataset are: steps: Number of steps taking in a 5-minute interval (missing values are coded as NA) date: The date on which the measurement was taken in YYYY-MM-DD format interval: Identifier for the 5-minute interval in which measurement was taken The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
+
+```{r, results='hide'}
+link <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(link, destfile = "dataset.zip")
+unzip("dataset.zip")
+data <- read.csv("activity.csv")
+library(ggplot2)
+```
+
+## What is mean total number of steps taken per day?
+
+```{r}
+steps <- aggregate(steps ~ date, data, sum)
+hist(steps$steps, main = "Total Steps Each Day", xlab ="# Steps", col = "lightblue")
+```
+
+1.1 Calculate and report the mean and median of the total number of steps taken per day
+
+```{r}
+stepsMean <- mean(steps$steps)
+stepsMedian <- median(steps$steps)
+```
+The **mean** is `r stepsMean` and the **median** is `r stepsMedian`
+
+## What is the average daily activity pattern?
+
+1. Calculate average steps for each interval for all days
+2. Plot the Average Number Steps per Day by Interval
+3. Find interval with most average steps
+
+```{r}
+stepsbyinterval <- aggregate(steps ~ interval, data, mean)
+ggplot(stepsbyinterval, aes(x = interval, y = steps)) + geom_line(color="darkgreen", size = 1) + labs(title = "Average Number of Steps per Day by Interval",x="Interval",y="Number of Steps")
+maxInterval <- stepsbyinterval[which.max(stepsbyinterval$steps),1]
+```
+
+#### The interval with most steps is `r maxInterval`
+
+## Imputing missing values
+Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data. 1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs) 2. Using Mean for the day compute missing values 3. Create a new dataset that is equal to the original dataset but with the missing data filled in. 4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day.
+1. Calculate and report the total number of missing values in the dataset
+```{r}
+NATotal <- sum(!complete.cases(data))
+```
+#### Total Number of Missing values are `r NATotal`
+
+## Complete the missing values
+```{r}
+StepsAverage <- aggregate(steps ~ interval, data = data, FUN = mean)
+fillNA <- numeric()
+for (i in 1:nrow(data)) {
+  obs <- data[i, ]
+  if (is.na(obs$steps)) {
+    steps <- subset(StepsAverage, interval == obs$interval)$steps
+  } else {
+    steps <- obs$steps
+  }
+  fillNA <- c(fillNA, steps)
+}
+new_activity <- data
+new_activity$steps <- fillNA
+StepsTotalUnion <- aggregate(steps ~ date, data = new_activity, sum, na.rm = TRUE)
+hist(StepsTotalUnion$steps, main = paste("Total Steps Each Day"), col="blue", xlab="Number of Steps")
+#Create Histogram to show difference. 
+hist(StepsTotalUnion$steps, main = paste("Total Steps Each Day"), col="green", xlab="Number of Steps", add=T)
+legend("topright", c("Imputed", "Non-imputed"), col=c("blue", "green"), lwd=10)
+```
+
+**Calculate Mean and median**
+```{r}
+## the mean
+rmeantotal <- mean(StepsTotalUnion$steps)
+## the median
+rmediantotal <- median(StepsTotalUnion$steps)
+## Do these values differ from the estimates from the first part of the assignment?
+rmediandiff <- rmediantotal - stepsMedian
+rmeandiff <- rmeantotal - stepsMean
+```
+Ans. The mean(Mean Var: `r rmeandiff`) is the same however the median does have a small variance(Median Var: `r rmediandiff`). between the total which includes the missing values to the base
+
+
